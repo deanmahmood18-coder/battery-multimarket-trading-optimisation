@@ -22,14 +22,10 @@ def main():
     S = int(run["S"])
     seed = int(run["seed"])
 
-    p_da = generate_da_prices(T=T, base=float(mkt["da_base_price"]), vol=float(mkt["da_vol"]), seed=seed)
-    p_rt = generate_rt_scenarios(
-        p_da=p_da, S=S,
-        noise_vol=float(mkt["rt_noise_vol"]),
-        spike_prob=float(mkt["spike_prob"]),
-        spike_size=float(mkt["spike_size"]),
-        seed=seed + 1
-    )
+    from src.data_loader import load_prices_30min, bootstrap_rt_scenarios
+
+    p_da, p_rt_hist = load_prices_30min()
+    p_rt = bootstrap_rt_scenarios(p_da, p_rt_hist, S=S, seed=seed, block_len=48)
 
     res = solve_two_stage(p_da=p_da, p_rt=p_rt, dt=dt, battery=battery)
     pnl = res["scenario_pnl"]
@@ -45,6 +41,35 @@ def main():
     plt.savefig(outpath, dpi=200, bbox_inches="tight")
     plt.close()
 
+    print(f"Saved: {outpath}")
+
+    # Price scenarios: DA vs a few RT paths
+    plt.figure(figsize=(10, 4))
+    plt.plot(p_da, label="DA", linewidth=2)
+    for i in range(min(5, p_rt.shape[0])):
+        plt.plot(p_rt[i], alpha=0.35, linewidth=1)
+    plt.title("DA price path with RT scenario samples")
+    plt.xlabel("Time step")
+    plt.ylabel("Price")
+    plt.legend()
+    outpath = "outputs/charts/price_scenarios.png"
+    plt.savefig(outpath, dpi=200, bbox_inches="tight")
+    plt.close()
+    print(f"Saved: {outpath}")
+
+    # Day-ahead schedule (two-stage non-anticipative dispatch)
+    ch = res["ch_DA"]
+    dis = res["dis_DA"]
+    plt.figure(figsize=(10, 4))
+    plt.plot(ch, label="Charge (MW)", color="#3a6ea5")
+    plt.plot(dis, label="Discharge (MW)", color="#f5a623")
+    plt.title("DA schedule (two-stage)")
+    plt.xlabel("Time step")
+    plt.ylabel("Power (MW)")
+    plt.legend()
+    outpath = "outputs/charts/da_schedule.png"
+    plt.savefig(outpath, dpi=200, bbox_inches="tight")
+    plt.close()
     print(f"Saved: {outpath}")
 
 

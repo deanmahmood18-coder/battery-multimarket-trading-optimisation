@@ -1,6 +1,7 @@
 import yaml
 import numpy as np
 import pulp
+from src.data_loader import load_prices_30min, bootstrap_rt_scenarios
 
 
 def load_yaml(path: str) -> dict:
@@ -98,45 +99,43 @@ def solve_two_stage(p_da: np.ndarray, p_rt: np.ndarray, dt: float, battery: dict
         "objective": float(pulp.value(m.objective)),
     }
 
-
 def main():
     run = load_yaml("configs/run.yaml")
-    mkt = load_yaml("configs/markets.yaml")
     battery = load_yaml("configs/battery.yaml")
 
     dt = float(run["dt_hours"])
-    T = int(run["T"])
     S = int(run["S"])
     seed = int(run["seed"])
 
-    from src.scenario_generation import generate_da_prices, generate_rt_scenarios
+    # Load REAL DA + SBP prices
+    p_da, p_rt_hist = load_prices_30min("data/processed/prices_30min.csv")
 
-    p_da = generate_da_prices(
-        T=T,
-        base=float(mkt["da_base_price"]),
-        vol=float(mkt["da_vol"]),
-        seed=seed,
-    )
-    p_rt = generate_rt_scenarios(
+    # Build RT scenarios via bootstrapped historical spreads
+    p_rt = bootstrap_rt_scenarios(
         p_da=p_da,
+        p_rt_hist=p_rt_hist,
         S=S,
-        noise_vol=float(mkt["rt_noise_vol"]),
-        spike_prob=float(mkt["spike_prob"]),
-        spike_size=float(mkt["spike_size"]),
-        seed=seed + 1,
+        seed=seed,
+        block_len=48,
     )
 
-    res = solve_two_stage(p_da=p_da, p_rt=p_rt, dt=dt, battery=battery)
+    res = solve_two_stage(
+        p_da=p_da,
+        p_rt=p_rt,
+        dt=dt,
+        battery=battery,
+    )
 
-    pnl = res["scenario_pnl"]
-    print("Two-stage status:", res["status"])
-    print("Two-stage expected P&L:", round(res["expected_pnl"], 2))
-    print("Two-stage objective (solver):", round(res["objective"], 2))
-    print("P&L percentiles (p5/p50/p95):",
-          round(np.percentile(pnl, 5), 2),
-          round(np.percentile(pnl, 50), 2),
-          round(np.percentile(pnl, 95), 2))
+    return res
+
 
 
 if __name__ == "__main__":
-    main()
+    res = main()
+    pnl = np.array(res.get("scenario_pnl", res.get("pnl_scenario", [])), dtype=float)
+
+    if pnl.size > 0:
+        p5, p50, p95 = np.percentile(pnl, [5, 50, 95])
+        print("P&L percentiles (p5/p50/p95):", f"{p5:.2f}", f"{p50:.2f}", f"{p95:.2f}")
+    else:
+        print("No scenario P&L array found in result dict. Available keys:", sorted(res.keys()))

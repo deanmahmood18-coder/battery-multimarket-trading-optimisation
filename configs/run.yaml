@@ -1,0 +1,4 @@
+dt_hours: 0.5
+T: 336           # 7 days of half-hourly periods (7*48)
+S: 100           # number of RT scenarios
+seed: 42

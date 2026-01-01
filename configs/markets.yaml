@@ -1,0 +1,6 @@
+da_base_price: 70
+da_vol: 15
+
+rt_noise_vol: 8
+spike_prob: 0.02
+spike_size: 120

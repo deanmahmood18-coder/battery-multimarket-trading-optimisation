@@ -2,7 +2,6 @@ import yaml
 import numpy as np
 import pulp
 
-
 def load_yaml(path: str) -> dict:
     with open(path, "r") as f:
         return yaml.safe_load(f)
@@ -72,14 +71,10 @@ def main():
     seed = int(run["seed"])
 
     # Import scenario generation from your package
-    from src.scenario_generation import generate_da_prices
+    from src.data_loader import load_prices_30min
 
-    p_da = generate_da_prices(
-        T=T,
-        base=float(mkt["da_base_price"]),
-        vol=float(mkt["da_vol"]),
-        seed=seed,
-    )
+    p_da, _ = load_prices_30min()
+    T = len(p_da)
 
     res = solve_da_only(p_da=p_da, dt=dt, battery=battery)
 

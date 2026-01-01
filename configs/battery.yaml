@@ -1,0 +1,7 @@
+E_max: 50        # MWh
+P_max: 25        # MW
+eta_c: 0.95
+eta_d: 0.95
+SoC0: 25         # MWh
+c_throughput: 1.0    # £/MWh cost for cycling (degradation proxy)
+c_trade: 0.2         # £/MWh transaction cost (bid/offer, fees)

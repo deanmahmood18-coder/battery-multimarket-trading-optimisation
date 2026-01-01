@@ -1,157 +1,94 @@
-# Battery Multi-Market Trading Optimisation  
-**Two-Stage Stochastic Strategy for Energy Storage**
+# Battery Multi-Market Trading Optimisation
+Two-stage stochastic strategy for energy storage across day-ahead and real-time markets.
 
----
+## Why this project adds value
+Battery trading is a classic decision-under-uncertainty problem. This project turns that into a practical workflow that:
+- Quantifies the **option value of flexibility** (how much RT optionality is worth).
+- Produces a **full distribution of P&L**, not just a point estimate.
+- Stress-tests performance across regimes, revealing **where the strategy wins or breaks**.
+- Produces a **dashboard + charts** that make the results easy to communicate.
 
-## Overview
-Battery energy storage assets create value by deciding **when** to charge and discharge and **how much capacity** to commit across different electricity markets. In practice, traders must balance:
+## What it does
+1) **DA-only baseline**  
+Deterministic arbitrage with full battery constraints to establish a clean benchmark.
 
-- Locking in revenue in the **day-ahead (DA)** market  
-- Preserving flexibility to capture **real-time (RT) / imbalance-style** price movements  
-- Operating within strict physical constraints on power, energy, and efficiency  
+2) **Two-stage stochastic optimisation**  
+Stage 1 commits day-ahead dispatch. Stage 2 adapts to RT scenarios while respecting SoC, power, and efficiency.
 
-This project frames battery trading as a **decision problem under uncertainty** and quantifies the **value of flexibility** using optimisation and regime stress testing.
+3) **Scenario diagnostics + stress tests**  
+Synthetic regime sweeps quantify how volatility, noise, and spikes change the option value.
 
----
+4) **Evaluation, plots, and dashboard**  
+End-to-end reporting in charts, tables, and a polished HTML dashboard.
 
-## Problem Definition
-A battery operator must decide how much capacity to commit day-ahead versus how much to keep flexible for real-time opportunities when prices are uncertain and may exhibit spikes.
+## Key findings (from generated outputs)
+- Flexibility behaves like an **option on volatility**: value increases with spike probability and RT noise.
+- The two-stage model exposes **risk distribution**, not just averages (p5/p50/p95, worst, best).
+- Stress tests show **regime sensitivity**, highlighting when DA commitments dominate vs when RT optionality is critical.
 
-Key challenges:
-- DA commitments are fixed in advance
-- RT prices are volatile and uncertain
-- Battery dispatch is constrained by power limits, energy capacity, efficiency, and state of charge
-
-The objective is to determine **when flexibility creates value** and how that value changes across market regimes.
-
----
-
-## Baseline: Day-Ahead-Only Optimisation
-The starting point is a deterministic DA-only arbitrage model:
-
-- Single price series
-- Linear optimisation
-- Full battery constraints
-- Objective: maximise DA trading profit
-
-This provides a clean benchmark for comparison.
-
-Run:
+## How to run
+### Baseline and two-stage runs
 ```bash
 python -m src.optimisation_da_only
-```
-## Model: Two-Stage Stochastic Optimisation
-
-### Structure
-The core model is a **two-stage stochastic optimisation**, implemented as a **deterministic-equivalent linear programme**.
-
----
-
-### Stage 1 – Day-Ahead Decisions (Non-Anticipative)
-Shared across all scenarios:
-
-- Day-ahead charge schedule `ch_DA[t]`
-- Day-ahead discharge schedule `dis_DA[t]`
-
-These decisions are **fixed before real-time prices are known** and must be identical across all scenarios.
-
----
-
-### Stage 2 – Real-Time Adjustments (Scenario-Specific)
-Once real-time prices realise for scenario `s`:
-
-- Adjustment charge `ch_ADJ[s,t]`
-- Adjustment discharge `dis_ADJ[s,t]`
-
-Total dispatch respects battery constraints:
-
-- Power limits
-- State-of-charge dynamics
-- Charge and discharge efficiency
-
----
-
-### Objective
-Maximise **expected profit across scenarios**:
-
-- Day-ahead energy earns DA prices
-- Real-time adjustments earn incremental value `(RT − DA)`
-
-This formulation produces a **full distribution of realised P&L**, rather than a single point estimate.
-
-Run:
-python -m src.optimisation_two_stage
-
-## Stress Testing and Regime Analysis
-
-Rather than relying on a single price path, the strategy is evaluated across **synthetic market regimes** that vary:
-
-- Day-ahead volatility  
-- Real-time noise (forecast error proxy)  
-- Spike probability (imbalance stress proxy)  
-
-For each regime, the model computes:
-
-- DA-only P&L  
-- Two-stage expected P&L  
-- Distribution of two-stage outcomes (p5 / p50 / p95, worst, best)  
-- **Option value of flexibility**
-
----
-
-### Option Value Definition
-
-\[
-\text{Option Value} = \mathbb{E}[\text{Two-Stage P\&L}] - \text{DA-Only P\&L}
-\]
-
----
-
-### How to Run
-
-```bash
-python -m src.stress_test
-python -m src.plots_stress
-python -m src.summarise
-```
-Outputs
-outputs/tables/stress_test_results.csv
-outputs/charts/option_value_vs_spike_prob.png
-outputs/summaries/executive_summary.txt
-
-## Key Insights
-
-- **Flexibility behaves like an option on volatility.**  
-  In calm markets, committing day-ahead captures most of the available value.
-
-- **Optionality becomes valuable in spiky regimes.**  
-  As volatility and spike frequency increase, preserving real-time flexibility materially improves expected returns.
-
-- **Risk matters, not just averages.**  
-  The two-stage framework produces a full P&L distribution, enabling downside and upside analysis rather than relying on a single forecast.
-
----
-
-## Project Structure ## 
-configs/        Model assumptions and parameters
-src/            Scenario generation, optimisation, evaluation
-outputs/        Charts, tables, and summaries
-tests/          Sanity checks
-## How to Run
-
-### Sanity-check scenario generation
-
-python -m src.backtest
-- **baseline model**
-python -m src.optimisation_da_only
-- **two stage eval**
 python -m src.optimisation_two_stage
 python -m src.evaluation
-- **stress test and summaries**
+```
+
+### Stress testing (fast mode supported)
+```bash
 python -m src.stress_test
 python -m src.plots_stress
 python -m src.summarise
+```
 
+Fast iteration:
+```bash
+python -m src.stress_test --fast
+```
 
+### Dashboard
+```bash
+python -m src.dashboard
+open outputs/dashboard.html
+```
+
+## Outputs
+- Tables: `outputs/tables/`
+- Charts: `outputs/charts/`
+- Summary text: `outputs/summaries/`
+- Dashboard: `outputs/dashboard.html`
+
+## Dashboard and charts (snapshots)
+These images are generated by the pipeline and appear in the dashboard.
+
+### Dashboard run snapshot
+![Dashboard run snapshot](assets/dashboard_run_snapshot.png)
+
+### Dashboard charts panel
+![Dashboard charts panel](assets/dashboard_charts.png)
+
+### P&L distribution
+![Two-stage P&L distribution](outputs/charts/pnl_distribution.png)
+
+### Price scenarios (DA + RT)
+![DA and RT scenario samples](outputs/charts/price_scenarios.png)
+
+### DA schedule (two-stage)
+![DA schedule](outputs/charts/da_schedule.png)
+
+### Option value vs spike probability
+![Option value vs spike probability](outputs/charts/option_value_vs_spike_prob.png)
+
+### Option value distribution
+![Option value distribution](outputs/charts/option_value_distribution.png)
+
+### Option value vs DA volatility
+![Option value vs DA volatility](outputs/charts/option_value_vs_da_vol.png)
+
+## Project structure
+- `configs/` model assumptions and parameters
+- `src/` scenario generation, optimisation, evaluation, plotting, dashboard
+- `outputs/` charts, tables, summaries, dashboard
+- `tests/` sanity checks
 
 
